@@ -46,7 +46,6 @@ async function getOffscreen() {
 }
 
 async function checkAndCloseOffscreen() {
-    console.log("checking")
     const query = { url: ["*://www.torn.com/*"] };
 
     chrome.tabs.query(query, async (tabs) => {
@@ -58,14 +57,14 @@ async function checkAndCloseOffscreen() {
 
 // This exists so we aren't putting a strain on the user's device when they change volume settings.
 function saveVolume(volume) {
+    lastSavedVolume = volume;
     if (volumeTimeout) return;
 
     chrome.storage.local.set({ volume });
-    lastSavedVolume = volume;
 
     volumeTimeout = setTimeout(() => {
         volumeTimeout = null;
-        if (lastSavedVolume !== volume) saveVolume(volume);
+        if (lastSavedVolume !== volume) saveVolume(lastSavedVolume);
     }, 500);
 }
 
