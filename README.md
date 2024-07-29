@@ -16,10 +16,13 @@
 ## Installation instructions
 > [!WARNING]
 > This is an incomplete version of TornRadioPlayer. Support will not be provided for installation
+> [!IMPORTANT]
+> The radio station is currently set to a random Russian radio station for demonstration purposes only.
 
-1. Download files from the latest release
-2. Extract the files to any folder
-3. Go to `chrome://extensions` on your Chromium-based browser
-4. Enable Developer Mode
-5. Load Unpacked
-6. Select the extracted folder
+1. Download files from the [latest release](https://github.com/Bloofield/TornRadioPlayer/releases)
+2. Extract the files to a folder of your choice
+3. Open your Chromium-based browser and go to `chrome://extensions`
+4. Enable Developer Mode by toggling the switch in the upper right corner.
+5. Click on "Load unpacked".
+6. Select the folder where you extracted the files.
+7. Navigate to [Torn](https://www.torn.com) and enjoy the radio player.
