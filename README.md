@@ -6,16 +6,17 @@
 - **Persistent Settings**: Volume settings are saved between sessions.
 
 ## Planned
-- Convert from Chrome Extension API to WebExtension API
-- Complete Radio Data Management
-- Add Mobile compatibility
-- Song Requests
-- Clickable Discord & DJ Torn Profile links
-- Hover icon text
+- Convert from Chrome Extension API to WebExtension API.
+- Complete Radio Data Management.
+- Add Mobile compatibility.
+- Song Requests.
+- Clickable Discord & DJ Torn Profile links.
+- Icon hover text.
 
 ## Installation instructions
 > [!WARNING]
 > This is an incomplete version of TornRadioPlayer. Support will not be provided for installation
+
 > [!IMPORTANT]
 > The radio station is currently set to a random Russian radio station for demonstration purposes only.
 
