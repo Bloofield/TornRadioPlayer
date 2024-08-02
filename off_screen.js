@@ -4,8 +4,7 @@ document.addEventListener('DOMContentLoaded', async() => {
     createAudioElement(initialVolume);
 });
 
-// some dingy russian rock radio thing. feel free to replace it with your own.
-const serverUrl = 'https://radiostream.pl/tuba8-1.mp3';
+const serverUrl = 'https://tornfm.xyz/listen/tornfm/radio.mp3';
 let checkServerStatusInterval;
 let audioElement;
 
@@ -16,6 +15,7 @@ async function createAudioElement(initialVolume) {
     audioElement.volume = initialVolume;
 
     audioElement.addEventListener('playing', onPlaying);
+    audioElement.addEventListener('pause', onPaused);
 
     document.body.appendChild(audioElement);
 }
@@ -23,6 +23,10 @@ async function createAudioElement(initialVolume) {
 function onPlaying() {
     chrome.runtime.sendMessage({ input: 'playing', target: 'background' });
     monitorAudioPlayback();
+}
+
+function onPaused() {
+    chrome.runtime.sendMessage({ input: 'stop', target: 'background' });
 }
 
 function monitorAudioPlayback() {

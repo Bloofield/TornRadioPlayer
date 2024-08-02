@@ -1,6 +1,11 @@
 let creating = null;
 let volumeTimeout = null;
 let lastSavedVolume = null;
+let savedRadioData = {
+    dj: "",
+    song: "",
+    listenerCount: ""
+};
 
 async function setupOffscreenDocument() {
     const existingContexts = await getOffscreen();
@@ -27,12 +32,41 @@ async function setupOffscreenDocument() {
     }
 }
 
-function sendMessageToTabs(message, ignoreCurrentActiveTab = false) {
+async function fetchAndUpdateRadioData() {
+    const response = await fetch('https://tornfm.xyz/api/nowplaying/tornfm');
+    const data = await response.json();
+
+    let radioData = {};
+
+    if (!response.ok || !data) {
+        radioData = {
+            dj: "Server Error",
+            song: "",
+            listenerCount: ""
+        };
+    } else {
+        const { artist, title } = data.now_playing.song;
+        radioData = {
+            dj: data.live.streamer_name,
+            song: [artist, title].filter(Boolean).join(' - '),
+            listenerCount: data.listeners.current
+        };
+    }
+
+    if (JSON.stringify(radioData) !== JSON.stringify(savedRadioData)) {
+        savedRadioData = radioData;
+        sendMessageToTabs({ action: 'setRadioData', radioData, target: 'content' });
+    }
+}
+
+fetchAndUpdateRadioData();
+setInterval(fetchAndUpdateRadioData, 5000);
+
+function sendMessageToTabs(message) {
     const query = { url: ["*://www.torn.com/*"] };
 
     chrome.tabs.query(query, tabs => {
         tabs.forEach(tab => {
-            if (ignoreCurrentActiveTab && tab.active && tab.currentWindow) return;
             // the lastError part exists to stop a million errors popping up when we send a message and a tab hasn't been initialised 
             chrome.tabs.sendMessage(tab.id, message, () => chrome.runtime.lastError);
         });
@@ -111,14 +145,16 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     const getters = {
         extensionId() {
             return { extensionId: chrome.runtime.id }
+        },
+        radioData() {
+            return { savedRadioData: JSON.stringify(savedRadioData) }
         }
     }
 
     const handleRequest = async () => {
         if (request.input && setters[request.input]) {
-            const { ignoreCurrentActiveTab = false, ...message } = await setters[request.input]();
-            if (!message) return;
-            sendMessageToTabs(message, ignoreCurrentActiveTab);
+            const message = await setters[request.input]();
+            if (message) sendMessageToTabs(message);
         } else if (request.get && getters[request.get]) {
             const response = getters[request.get]();
             sendResponse(response);
