@@ -1,0 +1,15 @@
+{
+  "name": "tornradioextension",
+  "version": "1.0.0",
+  "description": "- **Multi-Tab Audio Sync**: One instance of audio across all Torn tabs.\r - **Synced Controls**: Audio controls are synced across all tabs.\r - **Persistent Settings**: Volume settings are saved between sessions.",
+  "main": "audio_window.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "globals": "^15.9.0"
+  },
+  "dependencies": {
+    "webextension-polyfill": "^0.12.0"
+  }
+}

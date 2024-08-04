@@ -1,20 +1,21 @@
 {
     "name": "Torn Radio Player",
     "description": "An integrated radio player for Torn.",
-    "version": "1.1.2",
+    "version": "1.2",
     "manifest_version": 3,
     "permissions": [
-        "offscreen",
         "tabs",
         "storage"
     ],
     "background": {
-        "service_worker": "background.js"
+        "scripts": ["background/background.js"],
+        "service_worker": "background/background.js"
     },
     "content_scripts": [
         {
             "matches": ["*://www.torn.com/*"],
-            "js": ["content.js"]
+            "js": ["node_modules/webextension-polyfill/dist/browser-polyfill.js", "content/ui.js", "content/content.js"],
+            "css": ["content/styles.css"]
         }
     ],
     "externally_connectable": {
@@ -22,5 +23,10 @@
     },
     "icons": {
         "128": "TRP2.png"
+    },
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "{123e4567-e89b-12d3-a456-426614169000}"
+        }
     }
 }

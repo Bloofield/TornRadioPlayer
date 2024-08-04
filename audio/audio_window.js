@@ -4,9 +4,11 @@ document.addEventListener('DOMContentLoaded', async() => {
     createAudioElement(initialVolume);
 });
 
-const serverUrl = 'https://tornfm.xyz/listen/tornfm/radio.mp3';
+const serverUrl = `https://tornfm.xyz/listen/tornfm/radio.mp3?a=${Date.now()}`;
 let checkServerStatusInterval;
 let audioElement;
+
+const port = browser.runtime.connect({ name: 'audio_window' });
 
 async function createAudioElement(initialVolume) {
     audioElement = new Audio(serverUrl);
@@ -21,12 +23,12 @@ async function createAudioElement(initialVolume) {
 }
 
 function onPlaying() {
-    chrome.runtime.sendMessage({ input: 'playing', target: 'background' });
+    port.postMessage({ radioStatus: 'play' });
     monitorAudioPlayback();
 }
 
 function onPaused() {
-    chrome.runtime.sendMessage({ input: 'stop', target: 'background' });
+    port.postMessage({ radioStatus: 'stop' });
 }
 
 function monitorAudioPlayback() {
@@ -35,37 +37,19 @@ function monitorAudioPlayback() {
     clearInterval(checkServerStatusInterval);
     checkServerStatusInterval = setInterval(() => {
         if (audioElement.currentTime === lastCurrentTime) {
-            chrome.runtime.sendMessage({ target: 'background', input: 'stop' });
+            port.postMessage({ radioStatus: 'stop' });
         } else {
             lastCurrentTime = audioElement.currentTime;
         }
     }, 5000);
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    const setters = {
-        volume() {
-            audioElement.volume = request.volume;
-        }
-    }
-
-    const getters = {
-        isPlaying() {
-            return { isPlaying: !audioElement.paused };
-        },
-        volume() {
-            return { volume: audioElement.volume };
+port.onMessage.addListener((request) => {
+    const functions = {
+        setAudioVolume() {
+            audioElement.volume = request.setAudioVolume;
         }
     };
 
-    const handleRequest = () => {
-        if (request.input && setters[request.input]) {
-            setters[request.input]();
-        } else if (request.get && getters[request.get]) {
-            const response = getters[request.get]();
-            sendResponse(response);
-        }
-    };
-
-    handleRequest();
+    for (let key of Object.keys(request)) { if (functions[key]) functions[key](); }
 });
