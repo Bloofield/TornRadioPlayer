@@ -1,3 +1,14 @@
+function createElement(tag, className, content = '') {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (content) element.textContent = content;
+    return element;
+}
+
+function createIcon(svgString) {
+    return parser.parseFromString(svgString, 'image/svg+xml').documentElement;
+}
+
 async function createPanel() {
     const infoHeader = findInfoHeader();
     if (!infoHeader || document.querySelector('.tradio-panel')) return;
@@ -32,8 +43,7 @@ function setupPanel(infoHeader) {
 }
 
 async function buildPanelContent(delimiter) {
-    const panelContent = document.createElement('div');
-    panelContent.className = 'tradio-panel';
+    const panelContent = createElement('div', 'tradio-panel');
 
     panelContent.appendChild(createRadioLine(lastReceivedRadioData.dj, 'tradio-dj', icons.djIcon));
     panelContent.appendChild(createRadioLine(lastReceivedRadioData.song, 'tradio-song', icons.songIcon));
@@ -41,62 +51,61 @@ async function buildPanelContent(delimiter) {
 
     panelContent.appendChild(delimiter.cloneNode(true));
 
-    const controls = document.createElement('div');
-    controls.className = 'tradio-controls';
-
-    const button = document.createElement('button');
-    button.className = `tradio-play-stop-button ${isPlaying ? 'stop' : 'play'}`;
-    safeInnerHTML(button, isPlaying ? icons.stopIcon : icons.playIcon);
-    controls.appendChild(button);
-
-    const input = document.createElement('input');
-    input.type = 'range';
-    input.className = 'tradio-volume-control';
-    input.min = '0';
-    input.max = '100';
-    input.value = volume;
-    controls.appendChild(input);
-
+    const controls = createControls();
     panelContent.appendChild(controls);
     panelContent.appendChild(delimiter.cloneNode(true));
 
-    const link = document.createElement('a');
-    link.href = 'https://discord.gg/j4G3kd5fjw';
-    link.target = '_blank';
-    link.className = 'discord-link';
-    link.textContent = 'Join our Discord!';
+    const link = createDiscordLink();
     panelContent.appendChild(link);
 
     return panelContent;
 }
 
 function createRadioLine(text, className, svg, additionalStyles = '') {
-    const lineWrapper = document.createElement('div');
-    lineWrapper.className = 'tradio-line-wrapper';
-    if (additionalStyles) {
-        lineWrapper.style.cssText = additionalStyles;
-    }
+    const lineWrapper = createElement('div', 'tradio-line-wrapper');
+    if (additionalStyles) lineWrapper.style.cssText = additionalStyles;
 
-    const iconSpan = document.createElement('span');
-    iconSpan.className = 'tradio-icon';
-    safeInnerHTML(iconSpan, svg);
+    const iconSpan = createElement('span', 'tradio-icon');
+    const iconElement = createIcon(svg);
+    iconSpan.appendChild(iconElement);
     lineWrapper.appendChild(iconSpan);
 
-    const textWrapper = document.createElement('div');
-    textWrapper.className = 'tradio-scrolling-text-wrapper';
-
-    const textSpan = document.createElement('span');
-    textSpan.className = `tradio-scrolling-text ${className}`;
-    textSpan.textContent = text || '';
+    const textWrapper = createElement('div', 'tradio-scrolling-text-wrapper');
+    const textSpan = createElement('span', `tradio-scrolling-text ${className}`, text);
     textWrapper.appendChild(textSpan);
-
     lineWrapper.appendChild(textWrapper);
 
     return lineWrapper;
 }
 
+function createControls() {
+    const controls = createElement('div', 'tradio-controls');
+
+    const button = createElement('button', `tradio-play-stop-button ${isPlaying ? 'stop' : 'play'}`);
+    const iconString = isPlaying ? icons.stopIcon : icons.playIcon;
+    const iconElement = createIcon(iconString);
+    button.appendChild(iconElement);
+    controls.appendChild(button);
+
+    const input = createElement('input', 'tradio-volume-control');
+    input.type = 'range';
+    input.min = '0';
+    input.max = '100';
+    input.value = volume;
+    controls.appendChild(input);
+
+    return controls;
+}
+
+function createDiscordLink() {
+    const link = createElement('a', 'discord-link', 'Join our Discord!');
+    link.href = 'https://discord.gg/j4G3kd5fjw';
+    link.target = '_blank';
+    return link;
+}
+
 function applyStyles() {
-    const link = document.createElement('link');
+    const link = createElement('link');
     link.rel = 'stylesheet';
     link.type = 'text/css';
     link.href = browser.runtime.getURL('content/styles.css');
@@ -126,7 +135,7 @@ function initializeScrollingText(panelContent) {
         `;
 
         if (!styleSheet) {
-            styleSheet = document.createElement('style');
+            styleSheet = createElement('style');
             styleSheet.id = `dynamic-keyframes-${index}`;
             document.head.appendChild(styleSheet);
         }
@@ -188,8 +197,14 @@ function updatePlayStopButton(button, state) {
     const isPlayState = state === 'play';
     button.classList.toggle('play', isPlayState);
     button.classList.toggle('stop', !isPlayState);
-    safeInnerHTML(button, isPlayState ? icons.playIcon : icons.stopIcon);
+
+    while (button.firstChild) button.removeChild(button.firstChild);
+
+    const iconString = isPlayState ? icons.playIcon : icons.stopIcon;
+    const iconElement = createIcon(iconString);
+    button.appendChild(iconElement);
 }
+
 
 async function observeDOMChanges() {
     const config = { childList: true, subtree: true };
@@ -204,10 +219,4 @@ async function observeDOMChanges() {
     });
 
     observer.observe(document.body, config);
-}
-
-function safeInnerHTML(element, html) {
-    const textNode = document.createTextNode(html);
-    element.innerHTML = '';
-    element.appendChild(textNode);
 }

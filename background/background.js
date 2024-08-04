@@ -2,19 +2,17 @@ try { importScripts('../node_modules/webextension-polyfill/dist/browser-polyfill
 
 let volumeTimeout = null;
 let lastSavedVolume;
+let audioWindowId = null;
+const connections = {};
 let savedRadioData = {
     dj: "",
     song: "",
     listenerCount: ""
 };
 
-let audioWindowId = null;
-const connections = {};
-
 async function initVolume() {
     lastSavedVolume = (await browser.storage.local.get('volume')).volume;
 }
-
 initVolume();
 
 async function setupAudioWindow(maxWidth, maxHeight) {
@@ -41,31 +39,25 @@ async function setupAudioWindow(maxWidth, maxHeight) {
 }
 
 async function fetchAndUpdateRadioData() {
-    if (connections <= 0) return;
+    if (Object.keys(connections).length === 0) return;
+
     const response = await fetch('https://tornfm.xyz/api/nowplaying/tornfm');
     const data = await response.json();
 
-    let radioData = {};
+    const radioData = response.ok && data ? {
+        dj: data.live.streamer_name || 'No DJ',
+        song: [data.now_playing.song.artist, data.now_playing.song.title].filter(Boolean).join(' - '),
+        listenerCount: data.listeners.unique
+    } : {
+        dj: "Server Error",
+        song: "",
+        listenerCount: ""
+    };
 
-    if (response.ok && data) {
-        const { artist, title } = data.now_playing.song;
-        radioData = {
-            dj: data.live.streamer_name || 'No DJ',
-            song: [artist, title].filter(Boolean).join(' - '),
-            listenerCount: data.listeners.unique
-        };
-    } else {
-        radioData = {
-            dj: "Server Error",
-            song: "",
-            listenerCount: ""
-        };
-    }
+    if (JSON.stringify(radioData) === JSON.stringify(savedRadioData)) return;
 
-    if (JSON.stringify(radioData) !== JSON.stringify(savedRadioData)) {
-        savedRadioData = radioData;
-        broadcastMessage({ setRadioData: savedRadioData });
-    }
+    savedRadioData = radioData;
+    broadcastMessage({ setRadioData: savedRadioData });
 }
 
 fetchAndUpdateRadioData();
@@ -107,8 +99,7 @@ function saveVolume(volume) {
 }
 
 browser.windows.onRemoved.addListener((id) => {
-    if (id != audioWindowId) return;
-    broadcastMessage({ setButtonStatus: 'stop' });
+    if (id === audioWindowId) broadcastMessage({ setButtonStatus: 'stop' });
 });
 
 browser.tabs.onRemoved.addListener(checkAndCloseAudioWindow);
@@ -119,16 +110,20 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 browser.runtime.onConnect.addListener((port) => {
     connections[port.name] = port;
 
-    if (port.name.startsWith("content-")) port.postMessage({ setButtonStatus: 'audio_window' in connections ? 'play' : 'stop', setVolumeSlider: lastSavedVolume, setRadioData: savedRadioData });
+    if (port.name.startsWith("content-")) {
+        port.postMessage({
+            setButtonStatus: 'audio_window' in connections ? 'play' : 'stop',
+            setVolumeSlider: lastSavedVolume,
+            setRadioData: savedRadioData
+        });
+    }
 
     port.onDisconnect.addListener(() => { delete connections[port.name]; });
 
     port.onMessage.addListener((request) => {
         const functions = {
             radioStatus() {
-                if (request.radioStatus === 'stop') {
-                    closeAudioWindow();
-                }
+                if (request.radioStatus === 'stop') closeAudioWindow();
                 broadcastMessage({ setButtonStatus: request.radioStatus });
             },
             setRadioStatus() {

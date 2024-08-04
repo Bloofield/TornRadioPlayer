@@ -39,6 +39,7 @@
     padding: 0;
 }
 .tradio-volume-control {
+    -webkit-appearance: none;
     width: 120px;
     height: 7px;
     background: currentColor;
