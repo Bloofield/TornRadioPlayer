@@ -18,14 +18,15 @@ const icons = {
 let port;
 
 (async () => {
-    port = await browser.runtime.connect({ name: `content-${Date.now()}` });
-
     setupMessageListener();
     await createPanel();
     observeDOMChanges();
 })();
 
-function setupMessageListener() {
+async function setupMessageListener() {
+    port = await browser.runtime.connect({ name: `content-${Date.now()}` });
+    port.onDisconnect.addListener(() => { setTimeout(setupMessageListener, 1000); });
+
     port.onMessage.addListener((request, sender, sendResponse) => {
         const functions = {
             setButtonStatus() { updateMusicStatus(request.setButtonStatus); },

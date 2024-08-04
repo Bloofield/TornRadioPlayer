@@ -111,11 +111,13 @@ browser.runtime.onConnect.addListener((port) => {
     connections[port.name] = port;
 
     if (port.name.startsWith("content-")) {
-        port.postMessage({
-            setButtonStatus: 'audio_window' in connections ? 'play' : 'stop',
-            setVolumeSlider: lastSavedVolume,
-            setRadioData: savedRadioData
-        });
+        let message = { setButtonStatus: 'audio_window' in connections ? 'play' : 'stop' }
+
+        if (lastSavedVolume !== undefined) message.setVolumeSlider = lastSavedVolume;
+
+        if (!Object.values(savedRadioData).every(value => !value)) message.setRadioData = savedRadioData;
+
+        port.postMessage(message);
     }
 
     port.onDisconnect.addListener(() => { delete connections[port.name]; });
@@ -141,4 +143,6 @@ browser.runtime.onConnect.addListener((port) => {
 
         for (let key of Object.keys(request)) { if (functions[key]) functions[key](); }
     });
+
+    port._timer = setTimeout(() =>{ if (port) port.disconnect(); }, 295000);
 });

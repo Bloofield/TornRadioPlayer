@@ -8,7 +8,7 @@ const serverUrl = `https://tornfm.xyz/listen/tornfm/radio.mp3?a=${Date.now()}`;
 let checkServerStatusInterval;
 let audioElement;
 
-const port = browser.runtime.connect({ name: 'audio_window' });
+let port;
 
 async function createAudioElement(initialVolume) {
     audioElement = new Audio(serverUrl);
@@ -44,7 +44,9 @@ function monitorAudioPlayback() {
     }, 5000);
 }
 
-port.onMessage.addListener((request) => {
+function setupMessageListener() {
+    port = browser.runtime.connect({ name: 'audio_window' });
+    port.onMessage.addListener((request) => {
     const functions = {
         setAudioVolume() {
             audioElement.volume = request.setAudioVolume;
@@ -52,4 +54,9 @@ port.onMessage.addListener((request) => {
     };
 
     for (let key of Object.keys(request)) { if (functions[key]) functions[key](); }
-});
+    });
+
+    port.onDisconnect.addListener(() => { setTimeout(setupMessageListener, 1000); });
+}
+
+setupMessageListener();
