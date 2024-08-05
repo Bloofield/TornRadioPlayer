@@ -13,10 +13,22 @@ let savedRadioData = {
 async function initVolume() {
     lastSavedVolume = (await browser.storage.local.get('volume')).volume;
 }
-initVolume();
+
+async function initAudioWindowId() {
+    const savedId = (await browser.storage.local.get('audioWindowId')).audioWindowId;
+    const isWindowOpen = (await browser.windows.getAll()).some(win => win.id === savedId);
+
+    if (savedId && isWindowOpen) {
+        audioWindowId = savedId;
+    } else {
+        await browser.storage.local.set({ audioWindowId: null });
+        audioWindowId = null;
+    }
+}
+
 
 async function setupAudioWindow(maxWidth, maxHeight) {
-    if (audioWindowId !== null) return;
+    if (audioWindowId !== null) return broadcastMessage({ setButtonStatus: 'play' });
 
     const { volume } = await browser.storage.local.get('volume');
     lastSavedVolume = volume;
@@ -32,6 +44,7 @@ async function setupAudioWindow(maxWidth, maxHeight) {
         focused: false
     });
     audioWindowId = window.id;
+    await browser.storage.local.set({ audioWindowId });
 
     setTimeout(() => {
         browser.windows.update(audioWindowId, { state: 'minimized' });
@@ -50,8 +63,8 @@ async function fetchAndUpdateRadioData() {
         listenerCount: data.listeners.unique
     } : {
         dj: "Server Error",
-        song: "",
-        listenerCount: ""
+        song: " ",
+        listenerCount: " "
     };
 
     if (JSON.stringify(radioData) === JSON.stringify(savedRadioData)) return;
@@ -60,11 +73,10 @@ async function fetchAndUpdateRadioData() {
     broadcastMessage({ setRadioData: savedRadioData });
 }
 
-fetchAndUpdateRadioData();
-setInterval(fetchAndUpdateRadioData, 5000);
-
 function broadcastMessage(message) {
-    Object.values(connections).forEach(port => { if (port.name.startsWith("content-")) port.postMessage(message); });
+    Object.values(connections).forEach(port => {
+        if (port.name.startsWith("content-")) port.postMessage(message);
+    });
 }
 
 async function checkAndCloseAudioWindow() {
@@ -77,13 +89,13 @@ async function checkAndCloseAudioWindow() {
     setTimeout(queryTabsAndClose, 200);
 }
 
-function closeAudioWindow() {
+async function closeAudioWindow() {
     if (Object.keys(connections).length != 0) broadcastMessage({ setButtonStatus: 'stop' });
-    if (connections['audio_window']) delete connections['audio_window'];
 
     if (audioWindowId == null) return;
     browser.windows.remove(audioWindowId);
     audioWindowId = null;
+    await browser.storage.local.set({ audioWindowId: null });
 }
 
 function saveVolume(volume) {
@@ -98,51 +110,64 @@ function saveVolume(volume) {
     }, 500);
 }
 
-browser.windows.onRemoved.addListener((id) => {
-    if (id === audioWindowId) broadcastMessage({ setButtonStatus: 'stop' });
-});
+function initContentPage(port) {
+    let message = { setButtonStatus: audioWindowId !== null ? 'play' : 'stop' }
 
-browser.tabs.onRemoved.addListener(checkAndCloseAudioWindow);
-browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete') checkAndCloseAudioWindow();
-});
+    if (lastSavedVolume !== undefined) message.setVolumeSlider = lastSavedVolume;
+    if (!Object.values(savedRadioData).every(value => !value)) message.setRadioData = savedRadioData;
 
-browser.runtime.onConnect.addListener((port) => {
-    connections[port.name] = port;
+    port.postMessage(message);
+}
+async function init() {
+    await initVolume();
+    await initAudioWindowId();
+    fetchAndUpdateRadioData();
+    setInterval(fetchAndUpdateRadioData, 5000);
 
-    if (port.name.startsWith("content-")) {
-        let message = { setButtonStatus: 'audio_window' in connections ? 'play' : 'stop' }
+    browser.windows.onRemoved.addListener((id) => {
+        if (id !== audioWindowId) return
 
-        if (lastSavedVolume !== undefined) message.setVolumeSlider = lastSavedVolume;
-
-        if (!Object.values(savedRadioData).every(value => !value)) message.setRadioData = savedRadioData;
-
-        port.postMessage(message);
-    }
-
-    port.onDisconnect.addListener(() => { delete connections[port.name]; });
-
-    port.onMessage.addListener((request) => {
-        const functions = {
-            radioStatus() {
-                if (request.radioStatus === 'stop') closeAudioWindow();
-                broadcastMessage({ setButtonStatus: request.radioStatus });
-            },
-            setRadioStatus() {
-                switch (request.setRadioStatus) {
-                    case 'stop': closeAudioWindow(); break;
-                    case 'play': setupAudioWindow(request.width, request.height); break;
-                }
-            },
-            setVolume() {
-                connections['audio_window']?.postMessage({ setAudioVolume: request.setVolume });
-                saveVolume(request.setVolume);
-                broadcastMessage({ setVolumeSlider: request.setVolume });
-            }
-        };
-
-        for (let key of Object.keys(request)) { if (functions[key]) functions[key](); }
+        broadcastMessage({ setButtonStatus: 'stop' });
+        audioWindowId = null;
+        browser.storage.local.set({ audioWindowId: null });
     });
 
-    port._timer = setTimeout(() =>{ if (port) port.disconnect(); }, 295000);
-});
+    browser.tabs.onRemoved.addListener(checkAndCloseAudioWindow);
+    browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+        if (changeInfo.status === 'complete') checkAndCloseAudioWindow();
+    });
+
+    browser.runtime.onConnect.addListener((port) => {
+        connections[port.name] = port;
+
+        if (port.name.startsWith("content-")) initContentPage(port)
+
+        port.onDisconnect.addListener(() => { delete connections[port.name]; });
+
+        port.onMessage.addListener((request) => {
+            const functions = {
+                radioStatus() {
+                    if (request.radioStatus === 'stop') closeAudioWindow();
+                    broadcastMessage({ setButtonStatus: request.radioStatus });
+                },
+                setRadioStatus() {
+                    switch (request.setRadioStatus) {
+                        case 'stop': closeAudioWindow(); break;
+                        case 'play': setupAudioWindow(request.width, request.height); break;
+                    }
+                },
+                setVolume() {
+                    connections['audio_window']?.postMessage({ setAudioVolume: request.setVolume });
+                    saveVolume(request.setVolume);
+                    broadcastMessage({ setVolumeSlider: request.setVolume });
+                }
+            };
+
+            for (let key of Object.keys(request)) { if (functions[key]) functions[key](); }
+        });
+
+        port._timer = setTimeout(() =>{ if (port) port.disconnect(); }, 295000);
+    });
+}
+
+init();
