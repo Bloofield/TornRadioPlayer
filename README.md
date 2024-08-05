@@ -4,10 +4,10 @@
 - **Multi-Tab Audio Sync**: One instance of audio across all Torn tabs.
 - **Synced Controls**: Audio controls are synced across all tabs.
 - **Persistent Settings**: Volume settings are saved between sessions.
+- **Radio Data**: Radio data is now occasionally grabbed from the server
+- **WebExtenstion API**: Previously used the Chrome API, we now have compatibility with most browsers
 
 ## Planned
-- Convert from Chrome Extension API to WebExtension API.
-- Complete Radio Data Management.
 - Add Mobile compatibility.
 - Song Requests.
 - Clickable Discord & DJ Torn Profile links.
@@ -15,10 +15,7 @@
 
 ## Installation instructions
 > [!WARNING]
-> This is an incomplete version of TornRadioPlayer. Support will not be provided for installation
-
-> [!IMPORTANT]
-> The radio station is currently set to a random Russian radio station for demonstration purposes only.
+> This is a development build of TornRadioPlayer. Support will not be provided for installation
 
 1. Download files from the [latest release](https://github.com/Bloofield/TornRadioPlayer/releases).
 2. Extract the files to a folder of your choice.
