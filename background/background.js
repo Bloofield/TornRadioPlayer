@@ -45,10 +45,6 @@ async function setupAudioWindow(maxWidth, maxHeight) {
     });
     audioWindowId = window.id;
     await browser.storage.local.set({ audioWindowId });
-
-    setTimeout(() => {
-        browser.windows.update(audioWindowId, { state: 'minimized' });
-    }, 200);
 }
 
 async function fetchAndUpdateRadioData() {
@@ -138,6 +134,8 @@ async function init() {
     });
 
     browser.runtime.onConnect.addListener((port) => {
+        console.log(port.name);
+
         connections[port.name] = port;
 
         if (port.name.startsWith("content-")) initContentPage(port)

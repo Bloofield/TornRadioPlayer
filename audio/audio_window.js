@@ -2,6 +2,10 @@ document.addEventListener('DOMContentLoaded', async() => {
     const urlParams = new URLSearchParams(window.location.search);
     const initialVolume = parseFloat(urlParams.get('volume'));
     createAudioElement(initialVolume);
+
+    const windowId = (await browser.windows.getCurrent()).id
+
+    browser.windows.update(windowId, { state: 'minimized' });
 });
 
 const serverUrl = `https://tornfm.xyz/listen/tornfm/radio.mp3?a=${Date.now()}`;
